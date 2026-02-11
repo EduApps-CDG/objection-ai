@@ -1,0 +1,23 @@
+{
+  "name": "objection-ai",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "scripts": {
+    "start": "bun run ./index.ts",
+    "build": "bun run build:lin_x86 && bun run build:win",
+    "build:lin_x86": "bun build ./index.ts --compile --target=bun-linux-x64-baseline --outfile objection-ai",
+    "build:win": "bun build ./index.ts --compile --target=bun-windows-x64-baseline --outfile objection-ai"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@google/genai": "^1.40.0",
+    "axios": "^1.13.5",
+    "socket.io-client": "^4.8.3"
+  }
+}

@@ -1,0 +1,70 @@
+import {
+  AdminApi,
+  AuthApi,
+  BackgroundApi,
+  CaseApi,
+  CaseSaveApi,
+  CharacterApi,
+  CharacterPoseApi,
+  CharacterPoseAudioApi,
+  CharacterPoseFunctionApi,
+  CharacterPoseStateApi,
+  CharacterSpeechBubbleApi,
+  DialogueBoxApi,
+  DraftApi,
+  ErrorApi,
+  EvidenceApi,
+  ExportApi,
+  ExportWebApi,
+  MaintenanceApi,
+  MusicApi,
+  PopupApi,
+  PreferencesApi,
+  SceneApi,
+  SoundApi,
+  ThumbnailApi,
+} from './api/api';
+import type { Configuration } from './api/configuration';
+import axiosInstance from './axios';
+
+const configuration: Configuration = {
+  basePath: 'https://objection.lol/api',
+  isJsonMime: (mime: string) => mime.includes('application/json'),
+};
+
+export const ApiClient = {
+  auth: new AuthApi(configuration, '', axiosInstance),
+  assets: {
+    background: new BackgroundApi(configuration, '', axiosInstance),
+    sound: new SoundApi(configuration, '', axiosInstance),
+    music: new MusicApi(configuration, '', axiosInstance),
+    popup: new PopupApi(configuration, '', axiosInstance),
+    evidence: new EvidenceApi(configuration, '', axiosInstance),
+    character: new CharacterApi(configuration, '', axiosInstance),
+    pose: new CharacterPoseApi(configuration, '', axiosInstance),
+    poseState: new CharacterPoseStateApi(configuration, '', axiosInstance),
+    poseAudio: new CharacterPoseAudioApi(configuration, '', axiosInstance),
+    poseFunction: new CharacterPoseFunctionApi(
+      configuration,
+      '',
+      axiosInstance,
+    ),
+    characterSpeechBubble: new CharacterSpeechBubbleApi(
+      configuration,
+      '',
+      axiosInstance,
+    ),
+    dialogueBox: new DialogueBoxApi(configuration, '', axiosInstance),
+  },
+  case: new CaseApi(configuration, '', axiosInstance),
+  scene: new SceneApi(configuration, '', axiosInstance),
+  draft: new DraftApi(configuration, '', axiosInstance),
+  preferences: new PreferencesApi(configuration, '', axiosInstance),
+  export: new ExportApi(configuration, '', axiosInstance),
+  exportWeb: new ExportWebApi(configuration, '', axiosInstance),
+  caseSave: new CaseSaveApi(configuration, '', axiosInstance),
+  thumbnail: new ThumbnailApi(configuration, '', axiosInstance),
+  maintenance: new MaintenanceApi(configuration, '', axiosInstance),
+  error: new ErrorApi(configuration, '', axiosInstance),
+  admin: new AdminApi(configuration, '', axiosInstance),
+};
