@@ -8,7 +8,7 @@
   
   **Run:** `objection-ai.exe --room-id <id> --gemini-key <key> --player-username <name>`
   
-  [![Build Status](https://github.com/EduApps-CDG/objection-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/EduApps-CDG/objection-ai/actions/workflows/ci.yml)
+  [![Build Status](https://github.com/EduApps-CDG/objection-ia/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/EduApps-CDG/objection-ia/actions/workflows/ci.yml)
 </div>
 
 Objection.ai is a solo-ready AI client for objection.lol that runs full Ace Attorney-style trials without a human Game Master. Powered by `@google/genai`, it generates the case, testimony, evidence, and courtroom twists in real time so every session feels like a fresh episode.
