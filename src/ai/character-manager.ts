@@ -15,8 +15,8 @@ function buildSpeechSchema(character: Character): JsonSchema {
     required: ["text", "playerTurn", "scene"],
     properties: {
       text: { type: Type.STRING },
-      playerTurn: { type: Type.BOOLEAN },
-      continueSpeech: { type: Type.BOOLEAN },
+      playerTurn: { type: Type.BOOLEAN, description: "Set to false to allow AI characters to continue dialogue. Only set to true if you absolutely need player input right now." },
+      continueSpeech: { type: Type.BOOLEAN, description: "Set to true if you (this character) want to speak again immediately in the next message." },
       scene: {
         type: Type.OBJECT,
         required: ["poseId"],
@@ -136,7 +136,7 @@ export class CharacterManager {
       return { text: "" };
     }
 
-    const fullPrompt = `${this.buildContext()}\n\nPrompt:\n${prompt}\n\nReturn JSON only (no markdown) with: text (Character speech), scene (object with optional action, emotion, poseId), memory (array of short strings to remember), playerTurn (boolean true if the player should speak next, use false if you want to continue the speech in another message box or pass the speech to another character). If you pick a poseId, use one from the available list. Keep memory entries concise (<=12 words) and only add when needed. You may use the same`;
+    const fullPrompt = `${this.buildContext()}\n\nPrompt:\n${prompt}\n\nReturn JSON only (no markdown) with: text (Character speech), scene (object with optional action, emotion, poseId), memory (array of short strings to remember), playerTurn (boolean - IMPORTANT: set to false unless you MUST hear from the player immediately. Other AI characters can continue the dialogue.), continueSpeech (boolean - set true if YOU want to speak again immediately after this message, If witness is being cross-examined, set to true so it can explain in detail). If you pick a poseId, use one from the available list. Keep memory entries concise (<=12 words) and only add when needed.`;
 
     const schema = buildSpeechSchema(this.character);
     const response = await genai.generateJson<SpeechDraft>(fullPrompt, schema);
@@ -173,7 +173,7 @@ export class CharacterManager {
     this.socket?.sendPlainMessage({ text });
   }
 
-  sendMessage(draft: SpeechDraft): void {
+  async sendMessage(draft: SpeechDraft): Promise<void> {
     const character = this.ensureCharacter();
 
     if (draft.scene?.poseId !== undefined) {
@@ -192,7 +192,7 @@ export class CharacterManager {
 
     const poseId = character.getCurrentPoseId() ?? this.pickDefaultPoseId();
 
-    character.speech(draft.text, poseId);
+    await character.speech(draft.text, poseId);
   }
 
   addMemory(entry: string, timestamp: number = Date.now()): void {
@@ -202,6 +202,14 @@ export class CharacterManager {
 
   getCharacterId(): number {
     return this.characterId;
+  }
+
+  getState(): { poseId: number; characterId: number; mood: typeof this.mood } {
+    return {
+      poseId: this.getPose() ?? this.pickDefaultPoseId(),
+      characterId: this.characterId,
+      mood: this.mood,
+    };
   }
 
   private buildPresetSnippet(): string {

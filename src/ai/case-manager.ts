@@ -144,14 +144,7 @@ export class CaseManager {
     });
 
     if (!speaker) {
-      if (this.storyManager.isPlayerTurn()) {
         return { speakerId: null, text: "" };
-      }
-
-      return {
-        speakerId: null,
-        text: this.storyManager.getFallbackInterjection(),
-      };
     }
 
     this.storyManager.recordSpeech(speaker.id);
@@ -166,18 +159,30 @@ export class CaseManager {
     const refined: SpeechDraft = this.storyManager.refineSpeech(draft);
 
     character.recordSpeech(refined.text);
-    character.sendMessage(refined);
+    await character.sendMessage(refined);
+
+    this.storyManager.logSpeech(
+      speaker.id,
+      character.name,
+      refined.text,
+      character.getState(),
+    );
     
+    // Always complete the AI turn after a message is sent
+    this.storyManager.completeAiTurn();
+    
+    // If AI explicitly requests player turn, force it
     if (refined.playerTurn) {
-      this.storyManager.completeAiTurn();
+      console.log('[turn management] AI requested player turn');
       this.storyManager.forcePlayerTurn();
     }
 
-    if (this.masterSocket) {
-      this.masterSocket.sendPlainMessage({
-        text: `[master] ${character.name} will speak next`,
-      });
-    }
+    // Debug logging (commented out to avoid cluttering the courtroom)
+    // if (this.masterSocket) {
+    //   this.masterSocket.sendPlainMessage({
+    //     text: `[master] ${character.name} will speak next`,
+    //   });
+    // }
 
     return { 
       speakerId: speaker.id, 
@@ -218,16 +223,26 @@ export class CaseManager {
     });
     const memoriesContext = allMemories.length ? `Character memories:\n${allMemories.join("\n")}` : "";
 
+    const roleLookup = new Map(
+      Array.from(this.characters.values()).map((char) => [
+        char.name,
+        char.role ?? "Character",
+      ]),
+    );
+    const transcript = this.storyManager.buildSpeechLogTranscript(roleLookup);
+    const transcriptBlock = transcript ? `Recent transcript:\n${transcript}` : "";
+
     return [
       `Story: ${this.storyPrompt}`,
       keyPoints.length ? `Key points: ${keyPoints.join(" | ")}` : "",
       evidenceTitles,
       memoriesContext,
+      transcriptBlock,
       options.lastSpeakerId ? `Last speaker: ${options.lastSpeakerName ?? "unknown"} (id ${options.lastSpeakerId})` : "Last speaker: player",
       options.lastSpeakerState ? `Last speaker pose: ${options.lastSpeakerState.poseId}, mood: ${options.lastSpeakerState.mood}` : "",
       `Last message: "${options.lastMsg}"`,
       messageCountLine,
-      "Reply in <=25 words, courtroom tone."
+      "Reply in <=25 words, courtroom tone. Keep dialogue flowing - other characters will continue the exchange."
     ]
       .filter(Boolean)
       .join("\n");

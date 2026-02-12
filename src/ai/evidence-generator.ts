@@ -41,7 +41,7 @@ export async function generateEvidence(
 function buildPrompt(extraText: string): string {
   return [
     "Return a JSON array evidence items for an Ace Attorney style trial. Must include something like an autopsy report describing the victim.",
-    "Each item fields: id (slug), name, description (<=20 words), type ('image' or 'video'), url (may be empty).",
+    "Each item fields: id (slug), name, description, type ('image' or 'video'), url (may be empty).",
     "Keep it concise; no markdown.",
     extraText ? `Also include: ${extraText}` : "",
   ]
@@ -58,7 +58,7 @@ function buildSchema(): JsonSchema {
       properties: {
         id: { type: Type.STRING },
         name: { type: Type.STRING },
-        description: { type: Type.STRING },
+        description: { type: Type.STRING, description: "Describe the piece of evidence. What is it? Where it was found? Do not post advices, storylines or instructions for the player. Max 2 short paragraphs." },
         type: { type: Type.STRING, enum: ["image", "video"] },
         url: { type: Type.STRING },
       },

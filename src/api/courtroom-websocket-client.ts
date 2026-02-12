@@ -221,6 +221,7 @@ export default class CourtroomWebSocketClient {
 
   // Message methods
   sendMessage(data: Parameters<ClientToServerEvents['message']>[0]): void {
+    console.log('[websocket] Emitting message event:', data);
     this.socket?.emit('message', data);
   }
 
@@ -248,6 +249,7 @@ export default class CourtroomWebSocketClient {
   changeUsername(
     data: Parameters<ClientToServerEvents['change_username']>[0],
   ): void {
+    console.log('[websocket] Emitting change_username event:', data);
     this.socket?.emit('change_username', data);
   }
 

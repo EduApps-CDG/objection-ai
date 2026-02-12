@@ -26,6 +26,7 @@ export function createGenAIClient(config: GenAIConfig): GenAIClient | null {
       const response = await client.models.generateContent({
         model,
         config: {
+          systemInstruction: prompt,
           responseMimeType: 'application/json',
             responseSchema: {
               ...schema as Record<string, unknown>,
@@ -35,6 +36,7 @@ export function createGenAIClient(config: GenAIConfig): GenAIClient | null {
             }
         },
         contents: [
+          //TODO speechlog right before prompt
           {
             role: "user",
             parts: [{ text: prompt }],

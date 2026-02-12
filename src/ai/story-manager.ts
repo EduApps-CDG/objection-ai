@@ -1,6 +1,10 @@
+import chalk from "chalk";
+import type { CharacterState } from "../core/Character";
+
 export interface SpeakerCandidate {
   id: number;
   username: string;
+  role?: string;
   isHuman?: boolean;
   isTyping?: boolean;
 }
@@ -36,10 +40,42 @@ export class StoryManager {
   private playerUsername: string;
   private genai: any;
 
+  private speechLog: Array<{ speakerId?: number; speakerName: string; speakerState?:CharacterState; text: string; }> = [];
+
   constructor(options: StoryManagerOptions = {}) {
     this.cooldownMs = options.cooldownMs ?? 15000;
     this.playerUsername = options.playerUsername ?? "eduapps";
     this.genai = options.genai ?? null;
+  }
+
+  public getLast20Messages(): Array<{ speakerId?: number; speakerName: string; speakerState?:CharacterState; text: string; }> {
+    return this.speechLog.slice(-20);
+  }
+
+  public logSpeech(speakerId: number | undefined, speakerName: string, text: string, speakerState?:CharacterState): void {
+    this.speechLog.push({ speakerId, speakerName, speakerState, text });
+    if (speakerId) {
+      this.lastSpokenAt.set(speakerId, Date.now());
+    }
+  }
+
+  public buildSpeechLogTranscript(roleLookup?: Map<string, string>): string | null {
+    const entries = this.getLast20Messages();
+    if (!entries.length) {
+      return null;
+    }
+
+    const lines = entries.map((entry) => {
+      const role = entry.speakerId
+        ? roleLookup?.get(entry.speakerName) ?? "Character"
+        : "Defense";
+      const state = entry.speakerState
+        ? ` (poseId=${entry.speakerState.poseId}, mood=${entry.speakerState.mood})`
+        : "";
+      return `[${role}] ${entry.speakerName}${state}: ${entry.text}`;
+    });
+
+    return lines.join("\n");
   }
 
   beginPlayerTurn(username: string, aiTurnBudget: number): void {
@@ -133,6 +169,7 @@ export class StoryManager {
       }
     }
 
+    // If AI is unavailable, pick the NPC who hasn't spoken in the longest time (cooldown)
     if (!this.genai || !context) {
       return this.pickByCooldown(npcCandidates, now);
     }
@@ -143,7 +180,7 @@ export class StoryManager {
       return npcPick;
     }
 
-    return this.pickByCooldown(npcCandidates, now);
+    return undefined; //Player's turn if AI fails to pick
   }
 
   recordSpeech(speakerId: number, now: number = Date.now()): void {
@@ -177,30 +214,46 @@ export class StoryManager {
       return `${i + 1}. ${c.username} (id: ${c.id})${memoryStr}`;
     }).join("\n");
 
+    const roleLookup = new Map(candidates.map((c) => [c.username, c.role ?? "Character"]));
+    const transcript = this.buildSpeechLogTranscript(roleLookup);
+    const transcriptBlock = transcript ? `Recent transcript:\n${transcript}` : "";
+
     const prompt = [
       `Story: ${context.storyPrompt ?? "Ace Attorney trial"}`,
       context.evidences?.length ? `Evidence: ${context.evidences.map((e) => e.name).join(", ")}` : "",
       context.lastSpeakerName ? `Last speaker: ${context.lastSpeakerName}` : "",
       `Last message: "${context.lastMsg ?? ""}"`,
+      transcriptBlock,
       "\nWho should speak next to continue the trial naturally?",
       "Consider: continuation needs, natural flow, courtroom dynamics, character memories.",
+      "set speakerId to the id of the chosen character, or null to skip and let player speak. Briefly explain your choice in the reason field.",
       `\nAvailable characters:\n${characterDetails}`
     ].filter(Boolean).join("\n");
 
     const schema = {
       type: "object" as const,
       properties: {
-        speakerId: { type: "number" as const, description: "The id of the character who should speak next" },
+        speakerId: { type: ["number", "null"] as const, description: "The id of the character who should speak next. Set null if you want to skip this turn (set to player's turn)" },
         reason: { type: "string" as const, description: "Brief reason for this choice" },
       },
-      required: ["speakerId"],
       additionalProperties: false,
     };
 
     try {
       const result = await this.genai.generateJson(prompt, schema);
-      console.log(`[ai speaker choice] ${result.speakerId} - ${result.reason ?? "no reason"}`);
-      return candidates.find((c) => c.id === result.speakerId);
+      if (!result.speakerId) {
+        console.log(`[ai speaker choice]`, chalk.gray(`Player's turn`));
+        masterCourt.sendPlainMessage({
+          text: `[master] Player's turn`,
+        });
+        return;
+      }
+      const chosen = candidates.find((c) => c.id === result.speakerId);
+      console.log(`[ai speaker choice]`, chalk.gray(`${chosen?.username} (${result.speakerId} - ${result.reason ?? "no reason"})`));
+      masterCourt.sendPlainMessage({
+        text: `[master] ${chosen?.username} will speak next (${result.reason ?? "no reason"})`,
+      });
+      return chosen;
     } catch (error) {
       console.warn("[ai speaker choice] failed, using fallback", error);
       return undefined;

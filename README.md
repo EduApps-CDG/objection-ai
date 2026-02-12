@@ -28,9 +28,16 @@ You play as the lone Defense Attorney against an AI that hides the truth. Hit st
 
 ## Start the Show in Minutes
 1.  Download a build from the [releases](https://github.com/EduApps-CDG/objection-ai/releases) page (or build locally with Bun).
-2.  Create a room in [objection.lol](https://objection.lol)
-3.  Run example (classic "Is water wet?"):
+2.  Create a room in [objection.lol](https://objection.lol/courtroom/)
+3.  Run:
 
+**Interactive mode (recommended for first-time users):**
+```bash
+./objection-ai
+```
+The program will guide you through setup step by step.
+
+**CLI mode with all parameters:**
 ```bash
 ./objection-ai \
     --player-username <name> \

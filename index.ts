@@ -31,7 +31,7 @@ const readingDelayMs = 300; // after text animation, this will add a small delay
 let lastSpeakerName: string | null = null;
 
 //test:
-const masterCourt = new CourtroomWebSocketClient();
+globalThis.masterCourt = new CourtroomWebSocketClient();
 const genai = createGenAIClient({
     apiKey: GEMINI_KEY || "",
     model: GEMINI_MODEL
@@ -41,17 +41,6 @@ await Character.fetchCharacterData();
 // Track all active connections for cleanup
 const activeConnections: CourtroomWebSocketClient[] = [masterCourt];
 
-//test:
-// console.log(await genai?.generateJson("What is 2+2?", {
-//     type: "object",
-//     properties: {
-//         answer: { type: "number" },
-//     },
-//     required: ["answer"],
-//     additionalProperties: false,
-// }));
-// process.exit(0);
-
 const storyManager = new StoryManager({ cooldownMs: 15000, genai });
 const caseManager = new CaseManager({ genai, storyManager });
 const defaultCasePrompt = await generateCasePrompt(genai, PROMPT);
@@ -60,6 +49,10 @@ const generatedEvidence = await generateEvidence(genai, defaultCasePrompt);
 console.log("Generated evidence:", generatedEvidence);
 const generatedProfiles = await generateTrialCharacters(genai, defaultCasePrompt + "\n\nEvidence: " + generatedEvidence.map((e) => e.name).join(", "));
 console.log("Generated character profiles:", generatedProfiles);
+console.log(`\n[characters] ${generatedProfiles.length} characters generated:`);
+generatedProfiles.forEach(p => {
+    console.log(`  - ${p.name} (role: ${p.role}, id: ${p.id})`);
+});
 
 async function main() {
     const aiCharacters = generatedProfiles.map((profile) => ({
@@ -133,9 +126,10 @@ async function main() {
 
     // Let the Judge open the session once sockets are connected.
     setTimeout(() => {
-        masterCourt.sendPlainMessage({
-            text: "Storyline: " + caseManager.getCaseState().storyPrompt
-        });
+        // Debug: show storyline (commented out to avoid cluttering courtroom)
+        // masterCourt.sendPlainMessage({
+        //     text: "Storyline: " + caseManager.getCaseState().storyPrompt
+        // });
         void startJudgeOpening(caseManager.getCaseState());
     }, 800);
 
@@ -182,6 +176,12 @@ async function handleIncomingPlainMessage(message: MessageDto): Promise<void> {
     console.log("Player message from", message.userId, "as", username);
     lastSpeakerId = null;
 
+    storyManager.logSpeech(
+        undefined,
+        `Phoenix Wright (player:${username})`,
+        message.message.text ?? "",
+    );
+
     if (aiUsernames.has(username)) {
         aiUserIds.add(message.userId);
         return;
@@ -195,7 +195,7 @@ async function handleIncomingPlainMessage(message: MessageDto): Promise<void> {
     aiWindowRunning = true;
 
     storyManager.beginPlayerTurn(username, MAX_AI_MESSAGES);
-    storyManager.openAiWindow(MAX_AI_MESSAGES);
+    // Note: beginPlayerTurn already sets aiTurnsRemaining, no need to call openAiWindow again
     try {
         await runAiWindow(message);
     } finally {
@@ -206,19 +206,27 @@ async function handleIncomingPlainMessage(message: MessageDto): Promise<void> {
 async function runAiWindow(latestPlayerMessage: MessageDto): Promise<void> {
     let steps = 0;
     let lastWantsContinue = false;
+    let currentMessage = latestPlayerMessage.message.text;
+    
+    console.log(`[ai window] Starting with ${MAX_AI_MESSAGES} max messages`);
     
     while (storyManager.hasAiTurnAvailable() && steps < MAX_AI_MESSAGES) {
+        console.log(`[ai window] Step ${steps + 1}, hasAiTurnAvailable: ${storyManager.hasAiTurnAvailable()}`);
         const state = caseManager.getCaseState();
         const candidates = state.characters.map((character) => ({
             id: character.id,
             username: character.name,
+            role: character.role,
             isHuman: character.isHuman,
             isTyping: false,
         }));
+        
+        console.log(`[candidates] ${candidates.filter(c => !c.isHuman).length} AI characters available: ${candidates.filter(c => !c.isHuman).map(c => c.username).join(', ')}`);
 
+        //generate character speech
         const result = await caseManager.nextBeat({
             candidates,
-            lastMsg: latestPlayerMessage.message.text,
+            lastMsg: currentMessage, // Use the current message in the conversation
             lastSpeakerId,
             lastSpeakerName,
             lastSpeakerState: null,
@@ -227,13 +235,14 @@ async function runAiWindow(latestPlayerMessage: MessageDto): Promise<void> {
             evidences: state.evidences,
             lastSpeakerWantsContinue: lastWantsContinue,
         });
-        if (!result.text) {
+        if (!result.text || !result.speakerId) {
             break;
         }
 
         lastSpeakerId = result.speakerId;
         lastSpeakerName = state.characters.find((c) => c.id === result.speakerId)?.name ?? null;
         lastWantsContinue = result.wantsContinue ?? false;
+        currentMessage = result.text; // Update to the last AI response for next iteration
 
         console.log(`[ai delivered] ${result.speakerId ?? "unknown"}: ${result.text}${result.wantsContinue ? " (wants to continue)" : ""}`);
 
@@ -243,6 +252,8 @@ async function runAiWindow(latestPlayerMessage: MessageDto): Promise<void> {
 
         steps += 1;
     }
+    
+    console.log(`[ai window] Completed ${steps} messages. hasAiTurnAvailable: ${storyManager.hasAiTurnAvailable()}`);
 }
 
 function delay(ms: number): Promise<void> {
@@ -269,15 +280,33 @@ async function startJudgeOpening(state: CaseState): Promise<void> {
         return;
     }
 
+    // Log characters to courtroom
+    const charactersList = state.characters.map(c => `${c.name} (${c.role})`).join(", ");
+    masterCourt.sendPlainMessage({
+        text: `[Characters] ${charactersList}`
+    });
+
+    // Wait a bit before sending storyline
+    await delay(200);
+
+    // Log storyline to courtroom
+    masterCourt.sendPlainMessage({
+        text: `[Storyline] ${state.storyPrompt}`
+    });
+
+    // Wait a bit before judge speaks
+    await delay(300);
+
     storyManager.openAiWindow(1);
 
     const prompt = [
-        "Give a one-line opening to start the trial.",
+        "Give a one-line opening to start the trial and ask if the defense and prosecution are ready.",
         `Story prompt: ${state.storyPrompt}`,
         state.keyPoints.length ? `Key points: ${state.keyPoints.join(" | ")}` : "",
         "Tone: Judge declaring the session open briefly describing the case. <= 50 words.",
     ].filter(Boolean).join("\n");
 
+    //generate first judge speech
     await caseManager.nextBeat({
         candidates: [
             {

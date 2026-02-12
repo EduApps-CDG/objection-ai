@@ -127,17 +127,27 @@ export default class Character {
         return characterData.poses;
     }
 
-    public speech(text: string, poseId?: number) {
+    public async speech(text: string, poseId?: number): Promise<void> {
         this.state.poseId = poseId ?? this.state.poseId;
         console.log(`${this.name} (${this.id}) says: ${text}`, this.state);
         
         // Change username to this character's name before sending message
+        console.log(`[username change] Changing to: ${this.name}`);
         this.courtroom.changeUsername({ username: this.name });
         
-        this.courtroom.sendMessage({
+        // Wait for username change to propagate on server
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const messageData = {
             text,
             characterId: this.state.characterId,
             poseId: this.state.poseId
-        })
+        };
+        
+        console.log(`[sending message] ${this.name}:`, messageData);
+        this.courtroom.sendMessage(messageData);
+        
+        // Wait a bit to ensure message is sent before next operation
+        await new Promise(resolve => setTimeout(resolve, 100));
     }
 }

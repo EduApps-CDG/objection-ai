@@ -28,9 +28,9 @@ export async function generateCasePrompt(
 
 function buildPrompt(extraText: string): string {
   return [
-    "Create a trial premise for an Ace Attorney style scene.",
+    "Create a trial premise for an Ace Attorney style scene. Max 2 long paragraph describing the case, crime (what did the defendant do?), and the crime scene. Do NOT write plot, previous trials, court dialogue, or previous story events.",
     "Must include: Prosecutor Miles Edgeworth, a Judge, one or more Witnesses, and a Defendant. The player is the Defense (Phoenix Wright). Add an extra character disguised as witness or defendant to create intrigue or conflict.",
-    "Keep it under 128 words. Plain text only, no markdown.",
+    "Plain text only, no markdown.",
     extraText ? `Also include: ${extraText}` : "",
   ]
     .filter(Boolean)
