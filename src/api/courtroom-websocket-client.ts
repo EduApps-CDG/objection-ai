@@ -191,7 +191,17 @@ export default class CourtroomWebSocketClient {
    */
   disconnect(): void {
     if (this.socket) {
+      console.log('Disconnecting WebSocket...');
+      // Disable reconnection before disconnecting to prevent auto-reconnect
+      this.socket.io.opts.reconnection = false;
+      this.socket.removeAllListeners();
       this.socket.disconnect();
+      this.socket = null;
+      this.clearConnectionCallbacks();
+      this.updateConnectionState({
+        connected: false,
+        disconnected: true,
+      });
     }
   }
 

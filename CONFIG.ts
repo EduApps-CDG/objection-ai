@@ -1,5 +1,5 @@
 const DEFAULTS = {
-    roomId: "jx4r64",
+    roomId: undefined,
     roomPass: undefined,
     prompt: `
     Be funny, but try to make sense. Create a never seen storyline for a murder
@@ -15,8 +15,8 @@ function printHelp(): void {
 Usage: node index.ts [options]
 
 Options:
-  --room-id <id>          Courtroom room id (default: ${DEFAULTS.roomId})
-  --room-pass <pass>      Courtroom room password (default: ${DEFAULTS.roomPass})
+  --room-id <id>          Courtroom room id (required)
+  --room-pass <pass>      Courtroom room password (optional)
   --prompt <text>         Story prompt (default: built-in prompt)
   --player-username <id>  Human player username (default: ${DEFAULTS.playerUsername})
   --max-ai-messages <n>   Max sequential AI messages (default: ${DEFAULTS.maxAiMessages})

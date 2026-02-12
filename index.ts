@@ -38,6 +38,9 @@ const genai = createGenAIClient({
 });
 await Character.fetchCharacterData();
 
+// Track all active connections for cleanup
+const activeConnections: CourtroomWebSocketClient[] = [masterCourt];
+
 //test:
 // console.log(await genai?.generateJson("What is 2+2?", {
 //     type: "object",
@@ -123,17 +126,9 @@ async function main() {
         });
     });
 
+    // Bind all AI characters to the master socket instead of creating individual connections
     aiCharacters.forEach((entry) => {
-        const client = new CourtroomWebSocketClient();
-        client.connect({
-            query: {
-                username: entry.username,
-                roomId: ROOM_ID,
-                password: ROOM_PASS,
-            },
-        });
-
-        caseManager.bindCharacterSocket(entry.profile.id, client);
+        caseManager.bindCharacterSocket(entry.profile.id, masterCourt);
     });
 
     // Let the Judge open the session once sockets are connected.
@@ -156,6 +151,8 @@ async function main() {
 
 main().catch((error) => {
     console.error("Fatal error in main:", error);
+    cleanup();
+    process.exit(1);
 });
 
 function buildReplyPrompt(message: MessageDto, state: CaseState): string {
@@ -329,6 +326,40 @@ function startRepl() {
     });
 
     rl.on('close', () => {
+        cleanup();
         process.exit(0);
     });
 }
+
+// Cleanup function to disconnect all WebSocket connections
+function cleanup() {
+    console.log("Closing all WebSocket connections...");
+    activeConnections.forEach((connection) => {
+        try {
+            connection.disconnect();
+        } catch (error) {
+            console.error("Error disconnecting socket:", error);
+        }
+    });
+    console.log("All connections closed.");
+}
+
+// Handle process termination signals
+process.on('SIGINT', () => {
+    console.log("\nReceived SIGINT, cleaning up...");
+    cleanup();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log("\nReceived SIGTERM, cleaning up...");
+    cleanup();
+    process.exit(0);
+});
+
+// Handle uncaught errors
+process.on('uncaughtException', (error) => {
+    console.error("Uncaught exception:", error);
+    cleanup();
+    process.exit(1);
+});

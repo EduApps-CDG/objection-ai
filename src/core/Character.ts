@@ -130,6 +130,10 @@ export default class Character {
     public speech(text: string, poseId?: number) {
         this.state.poseId = poseId ?? this.state.poseId;
         console.log(`${this.name} (${this.id}) says: ${text}`, this.state);
+        
+        // Change username to this character's name before sending message
+        this.courtroom.changeUsername({ username: this.name });
+        
         this.courtroom.sendMessage({
             text,
             characterId: this.state.characterId,
