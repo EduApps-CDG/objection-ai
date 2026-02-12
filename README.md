@@ -13,26 +13,31 @@
 
 Objection.ai is a solo-ready AI client for objection.lol that runs full Ace Attorney-style trials without a human Game Master. Powered by `@google/genai`, it generates the case, testimony, evidence, and courtroom twists in real time so every session feels like a fresh episode.
 
-### HOLD IT! Infinite Cases, Zero Waiting
+## HOLD IT! Infinite Cases, Zero Waiting
 
 Skip the scripts and scheduling. **Objection.ai** spins up a complete Ace Attorney-style case *on demand* so you can jump straight into cross-examination.
 
 You play as the lone Defense Attorney against an AI that hides the truth. Hit start and a brand-new episode unfolds every time.
 
-### TAKE THAT! Stream-Ready Highlights
+## TAKE THAT! Stream-Ready Highlights
 
 * **📺 Solo-first content:** Jump in instantly without scheduling. Boot, record, and crack a case live.
 * **🔄 New case every run:** New victims, weapons, witnesses, and twists powered by `@google/genai`.
 * **🎭 Reactive testimony:** Press statements, present evidence, and watch the AI improvise under pressure.
 * **⚡ Fast setup:** Minimal install time so you can start playing sooner.
 
-### Start the Show in Minutes
+## Start the Show in Minutes
 1.  Download a build from the [releases](https://github.com/EduApps-CDG/objection-ai/releases) page (or build locally with Bun).
 2.  Create a room in [objection.lol](https://objection.lol)
-3.  Run example:
+3.  Run example (classic "Is water wet?"):
 
 ```bash
-./objection-ai --room-id <id> --gemini-key <key> --player-username <name> --prompt "Turnabout Eleven: A soccer player was murderered during the event using a knife."
+./objection-ai \
+    --player-username <name> \
+    --room-id <id> \
+    --room-pass [optional-password] \
+    --gemini-key <key> \
+    --prompt "Turnabout Wet: The defendant named 'Walter, the Water' is being accused of not being wet by the prosecution."
 ```
 
 ## [Join the Defense Team](https://github.com/EduApps-CDG/objection-ai/discussions)

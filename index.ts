@@ -78,7 +78,7 @@ async function main() {
     const masterSocket = masterCourt.connect({
         query: {
             username: "MasterSocket",
-            roomId: ROOM_ID,
+            roomId: ROOM_ID || "",
             password: ROOM_PASS
         }
     });
