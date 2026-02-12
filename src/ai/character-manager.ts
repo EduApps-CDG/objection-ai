@@ -14,8 +14,8 @@ function buildSpeechSchema(character: Character): JsonSchema {
     type: Type.OBJECT,
     required: ["text", "playerTurn", "scene"],
     properties: {
-      text: { type: Type.STRING },
-      playerTurn: { type: Type.BOOLEAN, description: "Set to false to allow AI characters to continue dialogue. Only set to true if you absolutely need player input right now." },
+      text: { type: Type.STRING, description: "The dialogue line that the character will speak" },
+      playerTurn: { type: Type.BOOLEAN, description: "Set to true if you need player (Defense) answer after this message." },
       continueSpeech: { type: Type.BOOLEAN, description: "Set to true if you (this character) want to speak again immediately in the next message." },
       scene: {
         type: Type.OBJECT,
@@ -31,6 +31,7 @@ function buildSpeechSchema(character: Character): JsonSchema {
       },
       memory: {
         type: Type.ARRAY,
+        description: "Short strings that the character wants to remember, for example an insult from the player or an important clue or contracdiction himself just said. Keep entries concise (<=12 words).",
         items: { type: Type.STRING },
         maxItems: "4"
       },
@@ -136,7 +137,7 @@ export class CharacterManager {
       return { text: "" };
     }
 
-    const fullPrompt = `${this.buildContext()}\n\nPrompt:\n${prompt}\n\nReturn JSON only (no markdown) with: text (Character speech), scene (object with optional action, emotion, poseId), memory (array of short strings to remember), playerTurn (boolean - IMPORTANT: set to false unless you MUST hear from the player immediately. Other AI characters can continue the dialogue.), continueSpeech (boolean - set true if YOU want to speak again immediately after this message, If witness is being cross-examined, set to true so it can explain in detail). If you pick a poseId, use one from the available list. Keep memory entries concise (<=12 words) and only add when needed.`;
+    const fullPrompt = `${this.buildContext()}\n\nPrompt:\n${prompt}\n\nReturn JSON only (no markdown) with: text (Character speech), scene (object with optional action, emotion, poseId), memory (array of short strings to remember), playerTurn, continueSpeech (boolean - set true if YOU want to speak again immediately after this message, If witness is being cross-examined, set to true so it can explain in detail). If you pick a poseId, use one from the available list. Keep memory entries concise (<=12 words) and only add when needed.`;
 
     const schema = buildSpeechSchema(this.character);
     const response = await genai.generateJson<SpeechDraft>(fullPrompt, schema);
