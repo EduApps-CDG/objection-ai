@@ -1,3 +1,7 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
+
 const DEFAULTS = {
     roomId: undefined,
     roomPass: undefined,
@@ -65,6 +69,8 @@ if (cliArgs.help) {
     process.exit(0);
 }
 
+const PRESET_PATH = path.join(os.homedir(), ".objection-ai-preset.json");
+
 // Color codes for terminal output
 const colors = {
     reset: '\x1b[0m',
@@ -96,6 +102,29 @@ async function promptUser(question: string, defaultValue?: string): Promise<stri
     });
 }
 
+function loadPreset(): Record<string, string> | null {
+    try {
+        if (!fs.existsSync(PRESET_PATH)) {
+            return null;
+        }
+
+        const raw = fs.readFileSync(PRESET_PATH, "utf8");
+        const parsed = JSON.parse(raw) as Record<string, string>;
+        return parsed;
+    } catch (error) {
+        console.warn(`${colors.yellow}Warning:${colors.reset} Failed to load preset:`, error);
+        return null;
+    }
+}
+
+function savePreset(preset: Record<string, string>): void {
+    try {
+        fs.writeFileSync(PRESET_PATH, JSON.stringify(preset, null, 2), "utf8");
+    } catch (error) {
+        console.warn(`${colors.yellow}Warning:${colors.reset} Failed to save preset:`, error);
+    }
+}
+
 async function interactiveSetup(): Promise<Record<string, string>> {
     console.log(`\n${colors.bright}${colors.magenta}════════════════════════════════════════════════════════════════${colors.reset}`);
     console.log(`${colors.bright}${colors.cyan}       Welcome to Objection.ai - Interactive Setup${colors.reset}`);
@@ -104,22 +133,21 @@ async function interactiveSetup(): Promise<Record<string, string>> {
     console.log(`${colors.yellow}Step 1:${colors.reset} Create a room at ${colors.blue}${colors.bright}https://objection.lol/courtroom/${colors.reset}`);
     console.log(`${colors.yellow}Step 2:${colors.reset} Answer the following questions:\n`);
 
+    const preset = loadPreset() ?? {};
     const config: Record<string, string> = {};
     
-    config['room-id'] = await promptUser('Enter room ID');
-    config['player-username'] = await promptUser('Enter your username', DEFAULTS.playerUsername);
-    config['room-pass'] = await promptUser('Enter room password (optional, press Enter to skip)', '');
-    config['gemini-key'] = await promptUser('Enter your Gemini API key', process.env.GEMINI_KEY || '');
-    config['gemini-model'] = await promptUser('Enter Gemini model', DEFAULTS.geminiModel);
-    
-    const useDefaultPrompt = await promptUser(`Use default prompt? (y/n)`, 'y');
-    if (useDefaultPrompt.toLowerCase() === 'y' || useDefaultPrompt === '') {
-        config['prompt'] = DEFAULTS.prompt;
-    } else {
-        config['prompt'] = await promptUser('Enter custom story prompt', DEFAULTS.prompt);
-    }
-    
-    config['max-ai-messages'] = await promptUser('Max AI messages per turn', DEFAULTS.maxAiMessages.toString());
+    const presetPrompt = preset.prompt ?? DEFAULTS.prompt;
+    const presetGeminiKey = preset['gemini-key'] ?? process.env.GEMINI_KEY ?? "";
+
+    config['room-id'] = await promptUser('Enter room ID', preset['room-id']);
+    config['player-username'] = await promptUser('Enter your username', preset['player-username'] ?? DEFAULTS.playerUsername);
+    config['room-pass'] = await promptUser('Enter room password (optional, press Enter to skip)', preset['room-pass'] ?? "");
+    config['gemini-key'] = await promptUser('Enter your Gemini API key', presetGeminiKey);
+    config['gemini-model'] = await promptUser('Enter Gemini model', preset['gemini-model'] ?? DEFAULTS.geminiModel);
+    config['prompt'] = await promptUser('Enter story prompt (leave blank to use preset)', presetPrompt);
+    config['max-ai-messages'] = await promptUser('Max AI messages per turn', preset['max-ai-messages'] ?? DEFAULTS.maxAiMessages.toString());
+
+    savePreset(config);
 
     console.log(`\n${colors.green}${colors.bright}✓ Configuration complete!${colors.reset}\n`);
     
